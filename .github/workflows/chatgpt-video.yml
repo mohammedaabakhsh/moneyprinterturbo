@@ -1,28 +1,26 @@
-name: MoneyPrinterTurbo from ChatGPT
+name: Create MoneyPrinterTurbo video from ChatGPT
 
 on:
-  issues:
-    types: [opened]
+  push:
+    branches:
+      - 'video-requests/**'
 
 permissions:
   contents: read
-  issues: write
 
 jobs:
   render-video:
-    if: >-
-      github.event.issue.user.login == github.repository_owner &&
-      startsWith(github.event.issue.title, '[MPT] ')
+    if: github.repository == 'mohammedaabakhsh/moneyprinterturbo'
     runs-on: ubuntu-latest
     timeout-minutes: 55
     env:
       PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
       UV_NO_PROGRESS: "1"
     steps:
-      - name: Checkout own fork
+      - name: Checkout the request branch
         uses: actions/checkout@v4
 
-      - name: Install media tools and Arabic fonts
+      - name: Install FFmpeg and Arabic fonts
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y ffmpeg fonts-noto-core
@@ -33,37 +31,30 @@ jobs:
           enable-cache: true
           python-version: '3.11'
 
-      - name: Install MoneyPrinterTurbo dependencies
+      - name: Install MoneyPrinterTurbo
         run: uv sync --frozen --no-dev
 
-      - name: Render prepared script
-        env:
-          GITHUB_EVENT_PATH: ${{ github.event_path }}
-        run: |
-          uv run --no-sync python scripts/chatgpt_video_bridge.py
+      - name: Render video from the request file
+        run: uv run --no-sync python scripts/chatgpt_video_bridge.py
 
-      - name: Upload finished MP4
+      - name: Upload the video artifact
         id: upload
         uses: actions/upload-artifact@v4
         with:
-          name: moneyprinterturbo-video-${{ github.event.issue.number }}
+          name: moneyprinterturbo-video-${{ github.run_id }}
           path: storage/chatgpt-bridge/output/video.mp4
           if-no-files-found: error
           retention-days: 7
 
-      - name: Post result to video request
+      - name: Write job summary
         if: always()
         env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
-          ISSUE_NUMBER: ${{ github.event.issue.number }}
           STATUS: ${{ job.status }}
           ARTIFACT_URL: ${{ steps.upload.outputs.artifact-url }}
           RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           if [ "$STATUS" = "success" ] && [ -n "$ARTIFACT_URL" ]; then
-            printf 'Video generated. Download the MP4 from the [workflow artifact](%s).\n' "$ARTIFACT_URL" > result.md
+            printf '### Video completed\n[Download the MP4 artifact](%s)\n' "$ARTIFACT_URL" >> "$GITHUB_STEP_SUMMARY"
           else
-            printf 'The video job did not complete successfully. See [workflow logs](%s) for the error. No video was delivered.\n' "$RUN_URL" > result.md
+            printf '### Video failed\nSee the [workflow logs](%s). No finished video was delivered.\n' "$RUN_URL" >> "$GITHUB_STEP_SUMMARY"
           fi
-          gh issue comment "$ISSUE_NUMBER" --body-file result.md
