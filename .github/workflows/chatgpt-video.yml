@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - 'video-requests/**'
+    paths:
+      - 'video-request.json'
 
 permissions:
   contents: read
