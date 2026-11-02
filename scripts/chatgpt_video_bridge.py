@@ -13,17 +13,16 @@ ROOT = Path(__file__).resolve().parents[1]
 WORK = ROOT / "storage" / "chatgpt-bridge"
 
 
-def issue_payload():
-    event_file = os.environ.get("GITHUB_EVENT_PATH")
-    if not event_file:
-        raise ValueError("GITHUB_EVENT_PATH is missing")
-    issue = json.loads(Path(event_file).read_text(encoding="utf-8"))["issue"]
+def load_request():
+    request_file = ROOT / "video-request.json"
+    if not request_file.is_file():
+        raise ValueError("video-request.json was not found in the request branch")
     try:
-        payload = json.loads((issue.get("body") or "").strip())
+        payload = json.loads(request_file.read_text(encoding="utf-8"))
     except json.JSONDecodeError as exc:
-        raise ValueError("Issue body must contain a plain JSON object") from exc
+        raise ValueError("video-request.json must contain valid JSON") from exc
     if not isinstance(payload, dict):
-        raise ValueError("Issue body must be a JSON object")
+        raise ValueError("video-request.json must be a JSON object")
     title, script = payload.get("title"), payload.get("script")
     if not isinstance(title, str) or not 1 <= len(title.strip()) <= 120:
         raise ValueError("title must contain 1-120 characters")
@@ -119,7 +118,7 @@ def write_config(data):
 
 
 def main():
-    data = issue_payload()
+    data = load_request()
     write_config(data)
     args = [sys.executable, "cli.py", "--video-subject", data["title"],
             "--video-script", data["script"], "--video-aspect", data["aspect"],
