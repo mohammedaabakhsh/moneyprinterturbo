@@ -63,7 +63,7 @@ def slide_images(data):
     if not font_file:
         raise ValueError("Arabic font is not installed")
     main = ImageFont.truetype(font_file, 58 if w < 1000 else 72)
-    small = ImageFont.truetype(font_file, 26)
+    small = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 26)
     scenes = data["scenes"] or [data["title"], "الفكرة", "الخاتمة"]
     palette = [("#132F42", "#21A7AE"), ("#263B51", "#CC9575"),
                ("#1D3D40", "#6EAE86"), ("#303958", "#A79CE4")]
